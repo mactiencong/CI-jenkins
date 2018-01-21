@@ -1,0 +1,27 @@
+pipeline {
+    agent any
+    environment {
+        CI = 'true'
+    }
+    stages {
+        stage('Sonarqube Analytic') {
+            steps {
+                sh 'docker run -it --rm -v /Users/matico:/src --link sonarqube mtc-sonarscanner sonar-scanner -Dsonar.host.url=http://sonarqube:9000 -Dsonar.jdbc.url=jdbc:h2:tcp://sonarqube/sonar -Dsonar.projectKey=KD -Dsonar.projectName=KD -Dsonar.projectVersion=1 -Dsonar.projectBaseDir=/src/Workspace/Projects/ReactNative/KD -Dsonar.sources=./src'
+                input message: 'Continue?'
+            }
+        }
+        stage('Build apk') {
+            steps {
+                sh 'docker inspect -f {{.State.Running}} reactnative || docker run -td -v /Users/matico/Workspace/Projects/ReactNative/KD/:/var/app --name reactnative mtc-reactnative'
+                sh 'docker exec -i reactnative /bin/bash ./var/app/build.sh'
+                input message: 'Continue?'
+            }
+        }
+        stage('Deploy download link') {
+            steps {
+                sh "docker inspect -f {{.State.Running}} apache-php56 || docker run -td -v /Users/matico/Workspace/Projects/ReactNative/KD/:/var/www/html --name apache-php56 -p 8081:80 574314ddd9fc"
+                sh "cp /home/Workspace/Projects/ReactNative/KD/android/app/build/outputs/apk/app-release.apk /home/Workspace/Projects/ReactNative/KD/kd.apk"
+            }
+        }
+    }
+}
